@@ -1,0 +1,6 @@
+@SAE.API_HostAddress = http://localhost:5198
+
+GET {{SAE.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
