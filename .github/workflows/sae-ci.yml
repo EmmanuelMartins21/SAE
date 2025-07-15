@@ -6,7 +6,6 @@ on:
   pull_request:
     branches: [ main, master ]
 
-
 jobs:
   processar-agendamentos:
     runs-on: ubuntu-latest
@@ -34,6 +33,14 @@ jobs:
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: '8.0.x'
+
+      # Install dotnet-ef after .NET SDK is installed
+      - name: Install dotnet-ef tool
+        run: dotnet tool install --global dotnet-ef
+
+      # Add .NET tools to PATH so dotnet-ef is available
+      - name: Add .NET tools to PATH
+        run: echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
 
       - name: 📦 Restaurar dependências
         run: dotnet restore SAE.sln
