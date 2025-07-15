@@ -1,0 +1,61 @@
+name: SAE CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  processar-agendamentos:
+    runs-on: ubuntu-latest
+
+    services:
+      rabbitmq:
+        image: rabbitmq:3-management
+        ports:
+          - 5672:5672
+          - 15672:15672
+        env:
+          RABBITMQ_DEFAULT_USER: guest
+          RABBITMQ_DEFAULT_PASS: guest
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: 📥 Clonar repositório
+        uses: actions/checkout@v3
+
+      - name: 🧰 Instalar .NET 8 SDK
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: 📦 Restaurar dependências
+        run: dotnet restore SAE.sln
+
+      - name: ⚙️ Criar banco SQLite e aplicar migrations
+        run: |
+          cd SAE.Processor
+          dotnet ef database update
+
+      - name: 🚀 Rodar Processor em segundo plano
+        run: |
+          nohup dotnet run --project SAE.Processor > processor.log 2>&1 &
+
+      - name: 🌐 Rodar API em segundo plano
+        run: |
+          nohup dotnet run --project SAE.API --urls=http://localhost:5000 > api.log 2>&1 &
+          sleep 10
+
+      - name: 🧪 Testar envio de agendamento
+        run: |
+          curl -X POST http://localhost:5000/api/agendamento \
+            -H "Content-Type: application/json" \
+            -d '{"nomePaciente":"Maria Teste","emailPaciente":"teste@ci.com","tipoExame":"HEMOGRAMA_COMPLETO","dataDesejada":"2025-07-21"}'
+
+      - name: 📄 Ver logs do Processor
+        run: cat processor.log
